@@ -95,6 +95,24 @@ async function run() {
       }
     })
 
+    app.get('/reviews/:id', async(req, res) => {
+      try {
+        const {id} = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ error: "Invalid serviceId" });
+        }
+
+        const result = await reviewCollection.find({ serviceId: id }).toArray();
+        res.status(200).json(result);
+      }
+      catch (err) {
+        res.status(500).json({
+          error: "Failed fetching reviews!",
+        })
+      }
+    })
+
   } finally {
   }
 }
