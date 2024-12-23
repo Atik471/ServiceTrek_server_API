@@ -24,6 +24,7 @@ async function run() {
   try {
     await client.connect();
     const serviceCollection = client.db("ServiceTrek").collection("services");
+    const reviewCollection = client.db("ServiceTrek").collection("reviews");
 
     app.post("/services/add", async (req, res) => {
       try {
@@ -76,6 +77,23 @@ async function run() {
         res.status(500).json({ error: "Failed to fetch service details" });
       };
     });
+
+    app.post('/reviews/add', async (req, res) => {
+      try {
+        const newReview = req.body;
+        const result = await reviewCollection.insertOne(newReview);
+
+        res.status(200).json({
+          message: "Review added successfully",
+          reviewId: result.insertedId,
+        })
+      }
+      catch (err) {
+        res.status(500).json({
+          error: "Failed posting review!",
+        })
+      }
+    })
 
   } finally {
   }
