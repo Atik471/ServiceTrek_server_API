@@ -60,6 +60,23 @@ async function run() {
         res.status(500).json({ error: err.message });
       }
     });
+
+    app.get(`/services/:id`, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const service = await serviceCollection.findOne({ _id: new ObjectId(id) });
+    
+        if (!service) {
+          return res.status(404).json({ error: "Service not found" });
+        }
+    
+        res.status(200).json(service);
+      } catch (error) {
+        console.error("Error fetching service details:", error);
+        res.status(500).json({ error: "Failed to fetch service details" });
+      };
+    });
+
   } finally {
   }
 }
