@@ -197,6 +197,30 @@ async function run() {
         });
       }
     });
+
+    app.get("/my-reviews/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+    
+        if (!id) {
+          return res.status(400).json({ error: "User ID is required" });
+        }
+    
+        const result = await reviewCollection.find({ uid: id }).toArray();
+    
+        if (!result || result.length === 0) {
+          return res.status(404).json({ message: "No reviews found" });
+        }
+    
+        res.status(200).json(result);
+      } catch (err) {
+        console.error("Error fetching reviews:", err);
+        res.status(500).json({
+          error: "Failed fetching your reviews!",
+        });
+      }
+    });
+
   } finally {
   }
 }
