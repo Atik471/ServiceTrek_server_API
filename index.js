@@ -209,7 +209,7 @@ async function run() {
         const result = await reviewCollection.find({ uid: id }).toArray();
     
         if (!result || result.length === 0) {
-          return res.status(404).json({ message: "No reviews found" });
+          return res.status(200).json([]);
         }
     
         res.status(200).json(result);
@@ -218,6 +218,64 @@ async function run() {
         res.status(500).json({
           error: "Failed fetching your reviews!",
         });
+      }
+    });
+
+    app.patch("/update-review/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ error: "Invalid review ID" });
+        }
+
+        const updatedData = req.body;
+
+        if (!updatedData || Object.keys(updatedData).length === 0) {
+          return res.status(400).json({ error: "No update data provided" });
+        }
+
+        const result = await reviewCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+
+        if (result.modifiedCount === 0) {
+          return res
+            .status(404)
+            .json({ error: "Review not found or no changes made" });
+        }
+
+        res.status(200).json({
+          message: "Review updated successfully",
+          updatedService: result,
+        });
+      } catch (error) {
+        console.error("Error updating review:", error);
+        res.status(500).json({ error: "Failed to update review" });
+      }
+    });
+
+    app.delete("/delete-review/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ error: "Invalid review ID" });
+        }
+
+        const result = await reviewCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).json({ error: "Review not found" });
+        }
+
+        res.status(200).json({ message: "Review deleted successfully" });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to delete review" });
       }
     });
 
