@@ -92,7 +92,38 @@ async function run() {
       }
     })
 
-
+    app.patch('/update-service/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+    
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ error: "Invalid service ID" });
+        }
+    
+        const updatedData = req.body;
+    
+        if (!updatedData || Object.keys(updatedData).length === 0) {
+          return res.status(400).json({ error: "No update data provided" });
+        }
+    
+        const result = await serviceCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+    
+        if (result.modifiedCount === 0) {
+          return res.status(404).json({ error: "Service not found or no changes made" });
+        }
+    
+        res.status(200).json({
+          message: "Service updated successfully",
+          updatedService: result,
+        });
+      } catch (error) {
+        console.error("Error updating service:", error);
+        res.status(500).json({ error: "Failed to update service" });
+      }
+    });
     
 
     app.post('/reviews/add', async (req, res) => {
