@@ -190,7 +190,8 @@ async function run() {
         }
 
         const result = await reviewCollection.find({ serviceId: id }).toArray();
-        res.status(200).json(result);
+        const total = result.length;
+        res.status(200).json({result: result, total: total});
       } catch (err) {
         res.status(500).json({
           error: "Failed fetching reviews!",
