@@ -47,7 +47,11 @@ async function run() {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const items = await serviceCollection.find().skip(skip).limit(limit).toArray();
+        const items = await serviceCollection
+          .find()
+          .skip(skip)
+          .limit(limit)
+          .toArray();
 
         const total = await serviceCollection.countDocuments();
 
@@ -62,59 +66,72 @@ async function run() {
       }
     });
 
+    app.get("/top-services", async (req, res) => {
+      try {
+        const items = await serviceCollection.find().limit(6).toArray();
+
+        res.status(200).json(items);
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
     app.get(`/services/:id`, async (req, res) => {
       try {
         const { id } = req.params;
-        const service = await serviceCollection.findOne({ _id: new ObjectId(id) });
-    
+        const service = await serviceCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
         if (!service) {
           return res.status(404).json({ error: "Service not found" });
         }
-    
+
         res.status(200).json(service);
       } catch (error) {
         console.error("Error fetching service details:", error);
         res.status(500).json({ error: "Failed to fetch service details" });
-      };
+      }
     });
 
-    app.get('/my-services/:id', async(req, res) => {
+    app.get("/my-services/:id", async (req, res) => {
       try {
-        const {id} = req.params;
+        const { id } = req.params;
 
         const result = await serviceCollection.find({ uid: id }).toArray();
         res.status(200).json(result);
-      }
-      catch (err) {
+      } catch (err) {
         res.status(500).json({
           error: "Failed fetching your services!",
-        })
+        });
       }
-    })
+    });
 
-    app.patch('/update-service/:id', async (req, res) => {
+    app.patch("/update-service/:id", async (req, res) => {
       try {
         const { id } = req.params;
-    
+
         if (!ObjectId.isValid(id)) {
           return res.status(400).json({ error: "Invalid service ID" });
         }
-    
+
         const updatedData = req.body;
-    
+
         if (!updatedData || Object.keys(updatedData).length === 0) {
           return res.status(400).json({ error: "No update data provided" });
         }
-    
+
         const result = await serviceCollection.updateOne(
           { _id: new ObjectId(id) },
           { $set: updatedData }
         );
-    
+
         if (result.modifiedCount === 0) {
-          return res.status(404).json({ error: "Service not found or no changes made" });
+          return res
+            .status(404)
+            .json({ error: "Service not found or no changes made" });
         }
-    
+
         res.status(200).json({
           message: "Service updated successfully",
           updatedService: result,
@@ -124,9 +141,31 @@ async function run() {
         res.status(500).json({ error: "Failed to update service" });
       }
     });
-    
 
-    app.post('/reviews/add', async (req, res) => {
+    app.delete("/delete-service/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({ error: "Invalid service ID" });
+        }
+
+        const result = await serviceCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).json({ error: "Service not found" });
+        }
+
+        res.status(200).json({ message: "Service deleted successfully" });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to delete service" });
+      }
+    });
+
+    app.post("/reviews/add", async (req, res) => {
       try {
         const newReview = req.body;
         const result = await reviewCollection.insertOne(newReview);
@@ -134,18 +173,17 @@ async function run() {
         res.status(200).json({
           message: "Review added successfully",
           reviewId: result.insertedId,
-        })
-      }
-      catch (err) {
+        });
+      } catch (err) {
         res.status(500).json({
           error: "Failed posting review!",
-        })
+        });
       }
-    })
+    });
 
-    app.get('/reviews/:id', async(req, res) => {
+    app.get("/reviews/:id", async (req, res) => {
       try {
-        const {id} = req.params;
+        const { id } = req.params;
 
         if (!ObjectId.isValid(id)) {
           return res.status(400).json({ error: "Invalid serviceId" });
@@ -153,14 +191,12 @@ async function run() {
 
         const result = await reviewCollection.find({ serviceId: id }).toArray();
         res.status(200).json(result);
-      }
-      catch (err) {
+      } catch (err) {
         res.status(500).json({
           error: "Failed fetching reviews!",
-        })
+        });
       }
-    })
-
+    });
   } finally {
   }
 }
