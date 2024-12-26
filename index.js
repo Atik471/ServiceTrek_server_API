@@ -76,6 +76,41 @@ async function run() {
       }
     });
 
+    app.get("/services/search", async (req, res) => {
+      try {
+        const { category, company, title, page = 1, limit = 10 } = req.query;
+    
+        const query = [];
+        if (category) query.push({ category: { $regex: category, $options: "i" } });
+        if (company) query.push({ company: { $regex: company, $options: "i" } });
+        if (title) query.push({ title: { $regex: title, $options: "i" } });
+    
+        const filter = query.length > 0 ? { $or: query } : {};
+    
+        const pageNumber = parseInt(page);
+        const pageLimit = parseInt(limit);
+        const skip = (pageNumber - 1) * pageLimit;
+    
+        const items = await serviceCollection
+          .find(filter)
+          .skip(skip)
+          .limit(pageLimit)
+          .toArray();
+    
+        const total = await serviceCollection.countDocuments(filter);
+    
+        res.status(200).json({
+          items,
+          total,
+          page: pageNumber,
+          totalPages: Math.ceil(total / pageLimit),
+        });
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        res.status(500).json({ error: "Failed to fetch services" });
+      }
+    });
+
     app.get(`/services/:id`, async (req, res) => {
       try {
         const { id } = req.params;
@@ -191,7 +226,7 @@ async function run() {
 
         const result = await reviewCollection.find({ serviceId: id }).toArray();
         const total = result.length;
-        res.status(200).json({result: result, total: total});
+        res.status(200).json({ result: result, total: total });
       } catch (err) {
         res.status(500).json({
           error: "Failed fetching reviews!",
@@ -202,17 +237,17 @@ async function run() {
     app.get("/my-reviews/:id", async (req, res) => {
       try {
         const { id } = req.params;
-    
+
         if (!id) {
           return res.status(400).json({ error: "User ID is required" });
         }
-    
+
         const result = await reviewCollection.find({ uid: id }).toArray();
-    
+
         if (!result || result.length === 0) {
           return res.status(200).json([]);
         }
-    
+
         res.status(200).json(result);
       } catch (err) {
         console.error("Error fetching reviews:", err);
@@ -279,7 +314,6 @@ async function run() {
         res.status(500).json({ error: "Failed to delete review" });
       }
     });
-
   } finally {
   }
 }
