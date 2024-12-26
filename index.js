@@ -1,50 +1,60 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 
 app.use(express.json());
-app.use(cors({
-  origin: ['http://localhost:5173'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://servicetrek-ff5f1.web.app"],
+    credentials: true,
+  })
+);
+// ,
 app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.send("ServieTrek");
 });
 
-app.post('/jwt', (req, res) => {
-  const user = req.body
-  const token = jwt.sign(user, process.env.JWT_SECRET, {expiresIn: '12h'})
+app.post("/jwt", (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "12h" });
   res
-  .cookie('token', token, {
-    httpOnly: true,
-    secure: false,
-  })
-  .send({jwtSuccess: true});
-})
+    .cookie("token", token, {
+      httpOnly: true,
+      // secure: false,
+      secure: process.env.NODE_ENV === "production",
+    })
+    .send({ jwtSuccess: true });
+});
 
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token;
 
-  if(!token){
-    return res.status(401).send({message: 'Unauthorized access'})
+  if (err) {
+    console.error("Token verification failed:", err);
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  if (err) {
+    console.error("Token verification failed:", err);
+    return res.status(401).send({ message: "Unauthorized access" });
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if(err){
-      if(!token){
-        return res.status(401).send({message: 'Unauthorized access'})
+    if (err) {
+      if (!token) {
+        return res.status(401).send({ message: "Unauthorized access" });
       }
     }
-  })
+  });
+  req.user = decoded; 
 
   next();
-}
+};
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8nuar.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -58,11 +68,11 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const serviceCollection = client.db("ServiceTrek").collection("services");
     const reviewCollection = client.db("ServiceTrek").collection("reviews");
 
-    app.post("/services/add", verifyToken, async (req, res) => {
+    app.post("/services/add", async (req, res) => { // verifyToken,
       try {
         const newService = req.body;
         const result = await serviceCollection.insertOne(newService);
@@ -73,7 +83,7 @@ async function run() {
         });
       } catch (error) {
         console.error("Error adding service:", error);
-        res.status(500).json({ error: "Failed to add service" });
+        res.status(500).json({ error: error });
       }
     });
 
@@ -115,26 +125,28 @@ async function run() {
     app.get("/services/search", async (req, res) => {
       try {
         const { category, company, title, page = 1, limit = 10 } = req.query;
-    
+
         const query = [];
-        if (category) query.push({ category: { $regex: category, $options: "i" } });
-        if (company) query.push({ company: { $regex: company, $options: "i" } });
+        if (category)
+          query.push({ category: { $regex: category, $options: "i" } });
+        if (company)
+          query.push({ company: { $regex: company, $options: "i" } });
         if (title) query.push({ title: { $regex: title, $options: "i" } });
-    
+
         const filter = query.length > 0 ? { $or: query } : {};
-    
+
         const pageNumber = parseInt(page);
         const pageLimit = parseInt(limit);
         const skip = (pageNumber - 1) * pageLimit;
-    
+
         const items = await serviceCollection
           .find(filter)
           .skip(skip)
           .limit(pageLimit)
           .toArray();
-    
+
         const total = await serviceCollection.countDocuments(filter);
-    
+
         res.status(200).json({
           items,
           total,
@@ -169,29 +181,28 @@ async function run() {
       try {
         const { category, company, title } = req.query;
         const { id } = req.params;
-    
+
         const query = [];
-        if (category) query.push({ category: { $regex: category, $options: "i" } });
-        if (company) query.push({ company: { $regex: company, $options: "i" } });
+        if (category)
+          query.push({ category: { $regex: category, $options: "i" } });
+        if (company)
+          query.push({ company: { $regex: company, $options: "i" } });
         if (title) query.push({ title: { $regex: title, $options: "i" } });
-    
+
         const filter = query.length > 0 ? { uid: id, $or: query } : { uid: id };
-    
-        const items = await serviceCollection
-          .find(filter)
-          .toArray();
-    
+
+        const items = await serviceCollection.find(filter).toArray();
+
         const total = await serviceCollection.countDocuments(filter);
-    
+
         res.status(200).json(items);
       } catch (error) {
         console.error("Error fetching services:", error);
         res.status(500).json({ error: "Failed to fetch services" });
       }
     });
-    
 
-    app.get("/my-services/:id", verifyToken, async (req, res) => {
+    app.get("/my-services/:id", async (req, res) => { // verifyToken,
       try {
         const { id } = req.params;
 
@@ -199,7 +210,7 @@ async function run() {
         res.status(200).json(result);
       } catch (err) {
         res.status(500).json({
-          error: "Failed fetching your services!",
+          error: err,
         });
       }
     });
@@ -262,7 +273,7 @@ async function run() {
       }
     });
 
-    app.post("/reviews/add", verifyToken, async (req, res) => {
+    app.post("/reviews/add",  async (req, res) => { //verifyToken,
       try {
         const newReview = req.body;
         const result = await reviewCollection.insertOne(newReview);
@@ -273,7 +284,7 @@ async function run() {
         });
       } catch (err) {
         res.status(500).json({
-          error: "Failed posting review!",
+          error: err,
         });
       }
     });
@@ -296,7 +307,7 @@ async function run() {
       }
     });
 
-    app.get("/my-reviews/:id", verifyToken, async (req, res) => {
+    app.get("/my-reviews/:id", async (req, res) => { //verifyToken, 
       try {
         const { id } = req.params;
 
@@ -314,12 +325,12 @@ async function run() {
       } catch (err) {
         console.error("Error fetching reviews:", err);
         res.status(500).json({
-          error: "Failed fetching your reviews!",
+          error: err,
         });
       }
     });
 
-    app.patch("/update-review/:id", verifyToken, async (req, res) => {
+    app.patch("/update-review/:id",  async (req, res) => { //verifyToken,
       try {
         const { id } = req.params;
 
@@ -350,11 +361,11 @@ async function run() {
         });
       } catch (error) {
         console.error("Error updating review:", error);
-        res.status(500).json({ error: "Failed to update review" });
+        res.status(500).json({ error: err });
       }
     });
 
-    app.delete("/delete-review/:id", verifyToken, async (req, res) => {
+    app.delete("/delete-review/:id",  async (req, res) => { //verifyToken,
       try {
         const { id } = req.params;
 
@@ -373,7 +384,7 @@ async function run() {
         res.status(200).json({ message: "Review deleted successfully" });
       } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Failed to delete review" });
+        res.status(500).json({ error: err });
       }
     });
   } finally {
